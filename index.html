@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Combined Visualizations</title>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5.20.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5.6.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6.20.0"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            /* align-items: center; */
+            padding: 20px; /* Added padding around the body */
+        }
+        #vis1, #vis2 {
+            margin-bottom: 50px; /* Increased margin between the two visualizations */
+            margin-left: 150px;
+        }
+    </style>
+</head>
+<body>
+    <div id="vis1"></div> <!-- First Visualization (Map) -->
+    <div id="vis2"></div> <!-- Second Visualization (Graph) -->
+
+    <script>
+        // Map Visualization
+        const spec1 = {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "title": "Number of Arrivals to Australia by citizen in first half of 2024",
+            "width": 800,
+            "height": 400,
+            "data": {
+                "url": "https://raw.githubusercontent.com/FIT3179/Vega-Lite/main/3_choropleth_map/js/ne_110m_admin_0_countries.topojson",
+                "format": {
+                    "type": "topojson",
+                    "feature": "ne_110m_admin_0_countries"
+                }
+            },
+            "projection": {
+                "type": "equalEarth"
+            },
+            "layer": [
+                {
+                    "transform": [
+                        {
+                            "calculate": "'Data is not available in ' + datum.properties.NAME",
+                            "as": "note"
+                        }
+                    ],
+                    "mark": {
+                        "type": "geoshape",
+                        "fill": "lightgray",
+                        "stroke": "white"
+                    },
+                    "encoding": {
+                        "tooltip": {
+                            "field": "note"
+                        }
+                    }
+                },
+                {
+                    "data": {
+                        "url": "https://raw.githubusercontent.com/FIT3179/Vega-Lite/main/7_others/oceans.topojson",
+                        "format": {
+                            "type": "topojson",
+                            "feature": "oceans"
+                        }
+                    },
+                    "mark": {
+                        "type": "geoshape",
+                        "fill": "skyblue"
+                    }
+                },
+                {
+                    "data": {
+                        "url": "https://raw.githubusercontent.com/FIT3179/Vega-Lite/main/2_symbol_map/js/WorldMapWithGraticules.topojson",
+                        "format": {
+                            "type": "topojson",
+                            "feature": "ne_110m_graticules_30"
+                        }
+                    },
+                    "mark": {
+                        "type": "geoshape",
+                        "fill": null,
+                        "stroke": "lightgray"
+                    }
+                },
+                {
+                    "transform": [
+                        {
+                            "lookup": "properties.NAME",
+                            "from": {
+                                "data": {
+                                    "url": "https://raw.githubusercontent.com/RoshaOwO/homework9/b2f3d015601bdc064f4d8574cac90150b8ff41cc/hw9.csv",
+                                    "format": {
+                                        "type": "csv"
+                                    }
+                                },
+                                "key": "Country",
+                                "fields": [
+                                    "Total_Arrival",
+                                    "Population"
+                                ]
+                            }
+                        },
+                        {
+                            "calculate": "datum.Total_Arrival/datum.Population * 100000",
+                            "as": "Arrivals per 100,000 population"
+                        }
+                    ],
+                    "mark": {
+                        "type": "geoshape"
+                    },
+                    "encoding": {
+                        "color": {
+                            "field": "Arrivals per 100,000 population",
+                            "type": "quantitative",
+                            "scale": {
+                                "type": "threshold",
+                                "domain": [1, 10, 50, 100],
+                                "range": ["#e5f5e0", "#a1d99b", "#74c476", "#41ab5d", "#006d2c"]
+                            }
+                        },
+                        "tooltip": [
+                            {
+                                "field": "properties.NAME",
+                                "type": "nominal",
+                                "title": "Country"
+                            },
+                            {
+                                "field": "Arrivals per 100,000 population",
+                                "type": "quantitative"
+                            }
+                        ]
+                    }
+                }
+            ]
+        };
+
+        // Graph Visualization
+        const spec2 = {
+            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+            "title": "Arrivals Visa Issued in Australia (2014 - 2024)",
+            "width": 800,
+            "height": 400,
+            "data": {
+                "url": "https://raw.githubusercontent.com/pchu0023/homework10/9c503399c4c9d4747f3529e287db7ee1c628b64e/visa-state.csv",
+                "format": {
+                    "type": "csv"
+                }
+            },
+            "params": [
+                {
+                    "name": "State_selection",
+                    "bind": {
+                        "input": "select",
+                        "options": [
+                            null, "NSW", "VIC", "QLD", "WA", "SA", "TAS", "NT"
+                        ],
+                        "labels": [
+                            "Show All", "New South Wales", "Victoria", "Queensland", "Western Australia", "South Australia", "Tasmania", "Northern Territory"
+                        ],
+                        "name": "State Selection: "
+                    }
+                }
+            ],
+            "transform": [
+                {
+                    "filter": "State_selection == null || datum.State == State_selection"
+                },
+                {
+                    "fold": [
+                        "Permanent Visas - Total",
+                        "Temporary Student Visas - Total",
+                        "Temporary visas - Total",
+                        "Other Visas(h)"
+                    ],
+                    "as": ["Visa Type", "Total"]
+                },
+                {
+                    "calculate": "datetime(datum.Month)",
+                    "as": "Date"
+                },
+                {
+                    "calculate": "replace(datum['Visa Type'], ' - Total', '')",
+                    "as": "Visa Type Cleaned"
+                }
+            ],
+            "layer": [
+                {
+                    "mark": "bar",
+                    "encoding": {
+                        "x": {
+                            "field": "Date",
+                            "type": "temporal",
+                            "axis": {
+                                "title": "Month",
+                                "format": "%b %Y"
+                            }
+                        },
+                        "y": {
+                            "aggregate": "sum",
+                            "field": "Total",
+                            "type": "quantitative",
+                            "axis": {
+                                "title": "Total Visa Issued"
+                            }
+                        },
+                        "color": {
+                            "field": "Visa Type Cleaned",
+                            "type": "nominal",
+                            "scale": {
+                                "domain": [
+                                    "Permanent Visas",
+                                    "Temporary Student Visas",
+                                    "Temporary visas",
+                                    "Other Visas"
+                                ],
+                                "range": ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728"]
+                            },
+                            "legend": {
+                                "title": "Visa Type"
+                            }
+                        },
+                        "tooltip": [
+                            {"field": "Month", "title": "Month"},
+                            {"field": "Total", "title": "Total Visa Issued"},
+                            {"field": "Visa Type Cleaned", "title": "Visa Type"},
+                            {"field": "State", "title": "State"}
+                        ]
+                    }
+                },
+                {
+                    "mark": {
+                        "type": "text",
+                        "fontSize": 12.5,
+                        "fill": "red"
+                    },
+                    "encoding": {
+                        "text": {"value": "COVID-19 border close-open:"},
+                        "x": {"value": 565},
+                        "y": {"value": 175}
+                    }
+                },
+                {
+                    "mark": {
+                        "type": "text",
+                        "fontSize": 12.5,
+                        "fill": "red"
+                    },
+                    "encoding": {
+                        "text": {"value": "Mar 2020 - Nov 2021"},
+                        "x": {"value": 565},
+                        "y": {"value": 200}
+                    }
+                }
+            ]
+        };
+
+        // Render both visualizations
+        vegaEmbed('#vis1', spec1).then(console.log).catch(console.warn);
+        vegaEmbed('#vis2', spec2).then(console.log).catch(console.warn);
+    </script>
+</body>
+</html>
